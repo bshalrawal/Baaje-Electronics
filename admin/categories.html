@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Categories - Baaje Electronics Admin</title>
+    <link rel="stylesheet" href="css/admin.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="admin-layout">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <a href="/admin/dashboard" class="sidebar-logo">⚡ Baaje Electronics</a>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="/admin/dashboard" class="nav-item">📊 Dashboard</a>
+                <a href="/admin/products" class="nav-item">📦 Products</a>
+                <a href="/admin/categories" class="nav-item active">🏷️ Categories</a>
+                <a href="/admin/banners" class="nav-item">🖼️ Banners</a>
+                <a href="/admin/settings" class="nav-item">⚙️ Settings</a>
+                <a href="#" class="nav-item" onclick="logout(); return false;">🚪 Logout</a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <div class="top-bar">
+                <h1 class="page-title">Categories</h1>
+                <button class="btn btn-primary" onclick="openModal()">➕ Add Category</button>
+            </div>
+
+            <div class="card">
+                <div id="categories-container">
+                    <div class="loading">Loading categories...</div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="category-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="modal-title">Add Category</h2>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
+            <form id="category-form">
+                <input type="hidden" id="category-id">
+                <div class="form-group">
+                    <label class="form-label">Name *</label>
+                    <input type="text" id="category-name" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea id="category-description" class="form-input" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Image</label>
+                    <input type="file" id="category-image" class="form-input" accept="image/*">
+                </div>
+                <div style="display: flex; gap: 12px; justify-content: flex-end;">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/admin.js"></script>
+    <script>
+        checkAuth();
+        let categories = [];
+        let editingId = null;
+
+        async function loadCategories() {
+            const data = await apiCall('/api/categories');
+            categories = data.data || [];
+            displayCategories();
+        }
+
+        function displayCategories() {
+            const container = document.getElementById('categories-container');
+            if (categories.length === 0) {
+                container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🏷️</div><p>No categories yet</p></div>';
+                return;
+            }
+
+            container.innerHTML = `
+        <table class="table">
+          <thead><tr><th>Name</th><th>Products</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody>
+            ${categories.map(cat => `
+              <tr>
+                <td><strong>${cat.name}</strong></td>
+                <td>${cat._count?.products || 0}</td>
+                <td><span class="badge ${cat.isActive ? 'badge-success' : 'badge-danger'}">${cat.isActive ? 'Active' : 'Inactive'}</span></td>
+                <td>
+                  <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;" onclick="editCategory(${cat.id})">Edit</button>
+                  <button class="btn btn-danger" style="padding: 6px 12px; font-size: 12px;" onclick="deleteCategory(${cat.id})">Delete</button>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+        }
+
+        function openModal() {
+            editingId = null;
+            document.getElementById('modal-title').textContent = 'Add Category';
+            document.getElementById('category-form').reset();
+            document.getElementById('category-modal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('category-modal').classList.remove('active');
+        }
+
+        function editCategory(id) {
+            const cat = categories.find(c => c.id === id);
+            if (!cat) return;
+            editingId = id;
+            document.getElementById('modal-title').textContent = 'Edit Category';
+            document.getElementById('category-id').value = id;
+            document.getElementById('category-name').value = cat.name;
+            document.getElementById('category-description').value = cat.description || '';
+            document.getElementById('category-modal').classList.add('active');
+        }
+
+        async function deleteCategory(id) {
+            if (!confirmDialog('Delete this category?')) return;
+            try {
+                await apiCall(`/api/categories/${id}`, { method: 'DELETE' });
+                showToast('Category deleted');
+                loadCategories();
+            } catch (error) {
+                showToast('Failed to delete', 'error');
+            }
+        }
+
+        document.getElementById('category-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData();
+            formData.append('name', document.getElementById('category-name').value);
+            formData.append('description', document.getElementById('category-description').value);
+            const file = document.getElementById('category-image').files[0];
+            if (file) formData.append('image', file);
+
+            try {
+                if (editingId) {
+                    await apiCall(`/api/categories/${editingId}`, { method: 'PUT', body: formData });
+                    showToast('Category updated');
+                } else {
+                    await apiCall('/api/categories', { method: 'POST', body: formData });
+                    showToast('Category created');
+                }
+                closeModal();
+                loadCategories();
+            } catch (error) {
+                showToast('Failed to save', 'error');
+            }
+        });
+
+        loadCategories();
+    </script>
+</body>
+
+</html>

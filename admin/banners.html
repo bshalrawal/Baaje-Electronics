@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Banners - Baaje Electronics Admin</title>
+    <link rel="stylesheet" href="css/admin.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="admin-layout">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <a href="/admin/dashboard" class="sidebar-logo">⚡ Baaje Electronics</a>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="/admin/dashboard" class="nav-item">📊 Dashboard</a>
+                <a href="/admin/products" class="nav-item">📦 Products</a>
+                <a href="/admin/categories" class="nav-item">🏷️ Categories</a>
+                <a href="/admin/banners" class="nav-item active">🖼️ Banners</a>
+                <a href="/admin/settings" class="nav-item">⚙️ Settings</a>
+                <a href="#" class="nav-item" onclick="logout(); return false;">🚪 Logout</a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <div class="top-bar">
+                <h1 class="page-title">Banners</h1>
+                <button class="btn btn-primary" onclick="openModal()">➕ Add Banner</button>
+            </div>
+
+            <div class="card">
+                <div id="banners-container">
+                    <div class="loading">Loading banners...</div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="banner-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="modal-title">Add Banner</h2>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
+            <form id="banner-form">
+                <input type="hidden" id="banner-id">
+                <div class="form-group">
+                    <label class="form-label">Title *</label>
+                    <input type="text" id="banner-title" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Subtitle</label>
+                    <input type="text" id="banner-subtitle" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea id="banner-description" class="form-input" rows="2"></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Image *</label>
+                    <input type="file" id="banner-image" class="form-input" accept="image/*">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Button Text</label>
+                    <input type="text" id="banner-button" class="form-input">
+                </div>
+                <div style="display: flex; gap: 12px; justify-content: flex-end;">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/admin.js"></script>
+    <script>
+        checkAuth();
+        let banners = [];
+        let editingId = null;
+
+        async function loadBanners() {
+            const data = await apiCall('/api/banners');
+            banners = data.data || [];
+            displayBanners();
+        }
+
+        function displayBanners() {
+            const container = document.getElementById('banners-container');
+            if (banners.length === 0) {
+                container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🖼️</div><p>No banners yet</p></div>';
+                return;
+            }
+
+            container.innerHTML = `
+        <table class="table">
+          <thead><tr><th>Title</th><th>Subtitle</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody>
+            ${banners.map(banner => `
+              <tr>
+                <td><strong>${banner.title}</strong></td>
+                <td>${banner.subtitle || '-'}</td>
+                <td><span class="badge ${banner.isActive ? 'badge-success' : 'badge-danger'}">${banner.isActive ? 'Active' : 'Inactive'}</span></td>
+                <td>
+                  <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;" onclick="editBanner(${banner.id})">Edit</button>
+                  <button class="btn btn-danger" style="padding: 6px 12px; font-size: 12px;" onclick="deleteBanner(${banner.id})">Delete</button>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+        }
+
+        function openModal() {
+            editingId = null;
+            document.getElementById('modal-title').textContent = 'Add Banner';
+            document.getElementById('banner-form').reset();
+            document.getElementById('banner-modal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('banner-modal').classList.remove('active');
+        }
+
+        function editBanner(id) {
+            const banner = banners.find(b => b.id === id);
+            if (!banner) return;
+            editingId = id;
+            document.getElementById('modal-title').textContent = 'Edit Banner';
+            document.getElementById('banner-id').value = id;
+            document.getElementById('banner-title').value = banner.title;
+            document.getElementById('banner-subtitle').value = banner.subtitle || '';
+            document.getElementById('banner-description').value = banner.description || '';
+            document.getElementById('banner-button').value = banner.buttonText || '';
+            document.getElementById('banner-modal').classList.add('active');
+        }
+
+        async function deleteBanner(id) {
+            if (!confirmDialog('Delete this banner?')) return;
+            try {
+                await apiCall(`/api/banners/${id}`, { method: 'DELETE' });
+                showToast('Banner deleted');
+                loadBanners();
+            } catch (error) {
+                showToast('Failed to delete', 'error');
+            }
+        }
+
+        document.getElementById('banner-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData();
+            formData.append('title', document.getElementById('banner-title').value);
+            formData.append('subtitle', document.getElementById('banner-subtitle').value);
+            formData.append('description', document.getElementById('banner-description').value);
+            formData.append('buttonText', document.getElementById('banner-button').value);
+            const file = document.getElementById('banner-image').files[0];
+            if (file) formData.append('image', file);
+
+            try {
+                if (editingId) {
+                    await apiCall(`/api/banners/${editingId}`, { method: 'PUT', body: formData });
+                    showToast('Banner updated');
+                } else {
+                    await apiCall('/api/banners', { method: 'POST', body: formData });
+                    showToast('Banner created');
+                }
+                closeModal();
+                loadBanners();
+            } catch (error) {
+                showToast('Failed to save', 'error');
+            }
+        });
+
+        loadBanners();
+    </script>
+</body>
+
+</html>

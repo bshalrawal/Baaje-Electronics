@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - Baaje Electronics Admin</title>
+    <link rel="stylesheet" href="css/admin.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="admin-layout">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <a href="/admin/dashboard" class="sidebar-logo">⚡ Baaje Electronics</a>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="/admin/dashboard" class="nav-item">📊 Dashboard</a>
+                <a href="/admin/products" class="nav-item">📦 Products</a>
+                <a href="/admin/categories" class="nav-item">🏷️ Categories</a>
+                <a href="/admin/banners" class="nav-item">🖼️ Banners</a>
+                <a href="/admin/settings" class="nav-item active">⚙️ Settings</a>
+                <a href="#" class="nav-item" onclick="logout(); return false;">🚪 Logout</a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <div class="top-bar">
+                <h1 class="page-title">Site Settings</h1>
+            </div>
+
+            <div class="card">
+                <form id="settings-form">
+                    <h3 style="margin-bottom: 20px;">General Information</h3>
+                    <div class="form-group">
+                        <label class="form-label">Site Name</label>
+                        <input type="text" id="site-name" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Site Description</label>
+                        <textarea id="site-description" class="form-input" rows="3"></textarea>
+                    </div>
+
+                    <h3 style="margin: 32px 0 20px;">Contact Information</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Email</label>
+                            <input type="email" id="site-email" class="form-input">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Phone</label>
+                            <input type="text" id="site-phone" class="form-input">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Address</label>
+                        <input type="text" id="site-address" class="form-input">
+                    </div>
+
+                    <h3 style="margin: 32px 0 20px;">Social Media</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Facebook</label>
+                            <input type="url" id="site-facebook" class="form-input">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Twitter</label>
+                            <input type="url" id="site-twitter" class="form-input">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Instagram</label>
+                            <input type="url" id="site-instagram" class="form-input">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">LinkedIn</label>
+                            <input type="url" id="site-linkedin" class="form-input">
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary" style="margin-top: 24px;">Save Settings</button>
+                </form>
+            </div>
+        </main>
+    </div>
+
+    <script src="js/admin.js"></script>
+    <script>
+        checkAuth();
+
+        async function loadSettings() {
+            const data = await apiCall('/api/settings');
+            const settings = data.data;
+            if (settings) {
+                document.getElementById('site-name').value = settings.siteName || '';
+                document.getElementById('site-description').value = settings.siteDescription || '';
+                document.getElementById('site-email').value = settings.email || '';
+                document.getElementById('site-phone').value = settings.phone || '';
+                document.getElementById('site-address').value = settings.address || '';
+                document.getElementById('site-facebook').value = settings.facebook || '';
+                document.getElementById('site-twitter').value = settings.twitter || '';
+                document.getElementById('site-instagram').value = settings.instagram || '';
+                document.getElementById('site-linkedin').value = settings.linkedin || '';
+            }
+        }
+
+        document.getElementById('settings-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData();
+            formData.append('siteName', document.getElementById('site-name').value);
+            formData.append('siteDescription', document.getElementById('site-description').value);
+            formData.append('email', document.getElementById('site-email').value);
+            formData.append('phone', document.getElementById('site-phone').value);
+            formData.append('address', document.getElementById('site-address').value);
+            formData.append('facebook', document.getElementById('site-facebook').value);
+            formData.append('twitter', document.getElementById('site-twitter').value);
+            formData.append('instagram', document.getElementById('site-instagram').value);
+            formData.append('linkedin', document.getElementById('site-linkedin').value);
+
+            try {
+                await apiCall('/api/settings', { method: 'PUT', body: formData });
+                showToast('Settings saved successfully');
+            } catch (error) {
+                showToast('Failed to save settings', 'error');
+            }
+        });
+
+        loadSettings();
+    </script>
+</body>
+
+</html>

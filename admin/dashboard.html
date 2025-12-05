@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Baaje Electronics Admin</title>
+    <link rel="stylesheet" href="css/admin.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="admin-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <a href="/admin/dashboard" class="sidebar-logo">⚡ Baaje Electronics</a>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="/admin/dashboard" class="nav-item active">
+                    📊 Dashboard
+                </a>
+                <a href="/admin/products" class="nav-item">
+                    📦 Products
+                </a>
+                <a href="/admin/categories" class="nav-item">
+                    🏷️ Categories
+                </a>
+                <a href="/admin/banners" class="nav-item">
+                    🖼️ Banners
+                </a>
+                <a href="/admin/settings" class="nav-item">
+                    ⚙️ Settings
+                </a>
+                <a href="#" class="nav-item" onclick="logout(); return false;">
+                    🚪 Logout
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="top-bar">
+                <h1 class="page-title">Dashboard</h1>
+                <div class="user-info">
+                    <span id="admin-name">Admin</span>
+                </div>
+            </div>
+
+            <!-- Stats Grid -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-label">Total Products</div>
+                    <div class="stat-value" id="total-products">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Categories</div>
+                    <div class="stat-value" id="total-categories">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Active Banners</div>
+                    <div class="stat-value" id="total-banners">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Featured Products</div>
+                    <div class="stat-value" id="featured-products">0</div>
+                </div>
+            </div>
+
+            <!-- Recent Products -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Recent Products</h2>
+                    <a href="/admin/products" class="btn btn-primary">View All</a>
+                </div>
+                <div id="recent-products-container">
+                    <div class="loading">Loading products...</div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Quick Actions</h2>
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+                    <a href="/admin/products" class="btn btn-primary">➕ Add Product</a>
+                    <a href="/admin/categories" class="btn btn-secondary">➕ Add Category</a>
+                    <a href="/admin/banners" class="btn btn-secondary">➕ Add Banner</a>
+                    <a href="/admin/settings" class="btn btn-secondary">⚙️ Site Settings</a>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="js/admin.js"></script>
+    <script>
+        // Check authentication
+        checkAuth();
+
+        // Display admin name
+        const adminInfo = getAdminInfo();
+        if (adminInfo) {
+            document.getElementById('admin-name').textContent = adminInfo.name;
+        }
+
+        // Load dashboard data
+        async function loadDashboard() {
+            try {
+                // Load products
+                const productsData = await apiCall('/api/products');
+                const products = productsData.data || [];
+
+                // Load categories
+                const categoriesData = await apiCall('/api/categories');
+                const categories = categoriesData.data || [];
+
+                // Load banners
+                const bannersData = await apiCall('/api/banners');
+                const banners = bannersData.data || [];
+
+                // Update stats
+                document.getElementById('total-products').textContent = products.length;
+                document.getElementById('total-categories').textContent = categories.length;
+                document.getElementById('total-banners').textContent = banners.length;
+                document.getElementById('featured-products').textContent =
+                    products.filter(p => p.isFeatured).length;
+
+                // Display recent products
+                displayRecentProducts(products.slice(0, 5));
+            } catch (error) {
+                console.error('Error loading dashboard:', error);
+                document.getElementById('recent-products-container').innerHTML =
+                    '<div class="empty-state">Failed to load dashboard data</div>';
+            }
+        }
+
+        function displayRecentProducts(products) {
+            const container = document.getElementById('recent-products-container');
+
+            if (products.length === 0) {
+                container.innerHTML = '<div class="empty-state">No products yet</div>';
+                return;
+            }
+
+            const table = `
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Product</th>
+              <th>Category</th>
+              <th>Price</th>
+              <th>Stock</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${products.map(product => `
+              <tr>
+                <td><strong>${product.name}</strong></td>
+                <td>${product.category?.name || 'N/A'}</td>
+                <td>${formatCurrency(product.salePrice || product.price)}</td>
+                <td>${product.stock}</td>
+                <td>
+                  <span class="badge ${product.isActive ? 'badge-success' : 'badge-danger'}">
+                    ${product.isActive ? 'Active' : 'Inactive'}
+                  </span>
+                  ${product.isFeatured ? '<span class="badge badge-warning">Featured</span>' : ''}
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+
+            container.innerHTML = table;
+        }
+
+        // Load dashboard on page load
+        loadDashboard();
+    </script>
+</body>
+
+</html>
